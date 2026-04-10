@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-title" content="Wake Enforcer" />
+  <title>Wake Up Enforcer</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #ffffff;
+      --bg2: #f5f5f5;
+      --bg3: #eeeeee;
+      --text: #111111;
+      --text2: #555555;
+      --text3: #888888;
+      --border: rgba(0,0,0,0.12);
+      --border2: rgba(0,0,0,0.22);
+      --success-bg: #eaf3de;
+      --success-text: #27500a;
+      --success-border: rgba(59,109,17,0.3);
+      --danger-bg: #fcebeb;
+      --danger-text: #791f1f;
+      --danger-border: rgba(163,45,45,0.3);
+      --warn-bg: #faeeda;
+      --warn-text: #633806;
+      --warn-border: rgba(133,79,11,0.3);
+      --info-bg: #e6f1fb;
+      --info-text: #0c447c;
+      --info-border: rgba(24,95,165,0.3);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a1a;
+        --bg2: #242424;
+        --bg3: #2e2e2e;
+        --text: #f0f0f0;
+        --text2: #aaaaaa;
+        --text3: #666666;
+        --border: rgba(255,255,255,0.10);
+        --border2: rgba(255,255,255,0.20);
+        --success-bg: #1a2e10;
+        --success-text: #a0d070;
+        --success-border: rgba(100,180,50,0.3);
+        --danger-bg: #2e1010;
+        --danger-text: #f09090;
+        --danger-border: rgba(200,60,60,0.3);
+        --warn-bg: #2a1e08;
+        --warn-text: #e0b060;
+        --warn-border: rgba(180,120,20,0.3);
+        --info-bg: #0e1f35;
+        --info-text: #70b0f0;
+        --info-border: rgba(50,120,200,0.3);
+      }
+    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    body { display: flex; flex-direction: column; min-height: 100dvh; overflow-x: hidden; }
+
+    .screen { display: none; flex-direction: column; padding: 1.5rem 1.25rem; min-height: 100dvh; }
+    .screen.active { display: flex; }
+
+    h1 { font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .sub { font-size: 14px; color: var(--text2); margin-bottom: 1.75rem; line-height: 1.4; }
+    .lbl { font-size: 11px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px; }
+
+    /* Time picker */
+    .time-row { display: flex; align-items: center; gap: 8px; margin-bottom: 1.5rem; }
+    .spin-col { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .spin-btn { background: none; border: none; color: var(--text3); font-size: 20px; padding: 4px 14px; cursor: pointer; border-radius: var(--radius-sm); -webkit-tap-highlight-color: transparent; }
+    .spin-btn:active { background: var(--bg3); }
+    .time-box { font-size: 48px; font-weight: 600; color: var(--text); width: 82px; text-align: center; border: 0.5px solid var(--border2); border-radius: var(--radius-sm); padding: 6px 4px; background: var(--bg); }
+    .sep { font-size: 48px; font-weight: 300; color: var(--text3); }
+    .ampm-col { display: flex; flex-direction: column; gap: 6px; margin-left: 4px; }
+    .ampm-btn { font-size: 14px; font-weight: 600; padding: 8px 14px; border: 0.5px solid var(--border); border-radius: var(--radius-sm); background: var(--bg2); color: var(--text2); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .ampm-btn.active { background: var(--info-bg); color: var(--info-text); border-color: var(--info-border); }
+
+    /* Count */
+    .count-row { display: flex; align-items: center; gap: 12px; margin-bottom: 1.5rem; }
+    .cnt-btn { width: 34px; height: 34px; border-radius: 50%; border: 0.5px solid var(--border2); background: var(--bg); color: var(--text); font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+    .cnt-btn:active { background: var(--bg3); }
+    .cnt-num { font-size: 22px; font-weight: 600; color: var(--text); min-width: 32px; text-align: center; }
+    .cnt-desc { font-size: 13px; color: var(--text2); }
+
+    /* Category toggles */
+    .cat-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 7px; margin-bottom: 1.75rem; }
+    .cat-btn { padding: 9px 6px; border: 0.5px solid var(--border); border-radius: var(--radius-sm); background: var(--bg2); color: var(--text3); font-size: 12px; cursor: pointer; text-align: center; line-height: 1.3; -webkit-tap-highlight-color: transparent; transition: all 0.12s; }
+    .cat-btn.on { font-weight: 600; }
+
+    /* Primary button */
+    .primary-btn { width: 100%; padding: 16px; background: var(--text); color: var(--bg); border: none; border-radius: var(--radius); font-size: 17px; font-weight: 600; cursor: pointer; margin-top: auto; -webkit-tap-highlight-color: transparent; }
+    .primary-btn:active { opacity: 0.85; }
+
+    /* Wait screen */
+    .status-pill { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--success-bg); border-radius: var(--radius-sm); margin-bottom: 1rem; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #3b6d11; animation: pulse 1.5s infinite; flex-shrink: 0; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .status-pill span { font-size: 13px; color: var(--success-text); font-weight: 600; }
+    .wait-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1.5rem; text-align: center; margin-bottom: 1rem; }
+    .wait-time { font-size: 56px; font-weight: 600; color: var(--text); line-height: 1; margin-bottom: 6px; }
+    .wait-lbl { font-size: 13px; color: var(--text2); }
+    .cd-row { display: flex; gap: 10px; margin-top: 1.25rem; }
+    .cd-card { flex: 1; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px; text-align: center; }
+    .cd-num { font-size: 28px; font-weight: 600; color: var(--text); }
+    .cd-unit { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    .hint-txt { font-size: 13px; color: var(--text3); text-align: center; padding: 0.5rem 0 1rem; line-height: 1.5; }
+    .ghost-btn { width: 100%; padding: 13px; background: none; border: 0.5px solid var(--border2); border-radius: var(--radius); font-size: 15px; color: var(--text2); cursor: pointer; margin-top: auto; -webkit-tap-highlight-color: transparent; }
+    .ghost-btn:active { background: var(--bg3); }
+
+    /* Alarm screen */
+    .alarm-top { text-align: center; padding: 1rem 0 0.5rem; }
+    .ring-lbl { font-size: 11px; color: var(--danger-text); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 2px; }
+    .ring-time { font-size: 68px; font-weight: 600; color: var(--text); line-height: 1; }
+    .alarm-flash { animation: flashbg 0.85s infinite; }
+    @keyframes flashbg { 0%,100%{background:var(--bg)} 50%{background:var(--danger-bg)} }
+    .q-card { background: var(--bg2); border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 1.25rem; margin: 0.5rem 0; }
+    .q-cat-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+    .q-cat-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .q-cat-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); }
+    .q-text { font-size: 17px; font-weight: 600; color: var(--text); line-height: 1.4; margin-bottom: 14px; }
+    .opts { display: flex; flex-direction: column; gap: 8px; }
+    .opt { width: 100%; padding: 12px 14px; text-align: left; border: 0.5px solid var(--border2); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-size: 15px; cursor: pointer; line-height: 1.3; -webkit-tap-highlight-color: transparent; transition: background 0.1s; }
+    .opt:active:not(:disabled) { background: var(--bg3); }
+    .opt.correct { background: var(--success-bg); border-color: var(--success-border); color: var(--success-text); font-weight: 600; }
+    .opt.wrong { background: var(--danger-bg); border-color: var(--danger-border); color: var(--danger-text); font-weight: 600; }
+    .opt:disabled { cursor: default; opacity: 0.65; }
+    .opt.correct:disabled, .opt.wrong:disabled { opacity: 1; }
+    .explain { margin-top: 10px; padding: 11px 13px; border-radius: var(--radius-sm); font-size: 13px; line-height: 1.55; display: none; }
+    .explain.show { display: block; }
+    .explain.good { background: var(--success-bg); border: 0.5px solid var(--success-border); color: var(--success-text); }
+    .explain.bad { background: var(--warn-bg); border: 0.5px solid var(--warn-border); color: var(--warn-text); }
+    .prog-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+    .prog-bg { flex: 1; height: 5px; background: var(--border); border-radius: 3px; }
+    .prog-fill { height: 5px; background: var(--text); border-radius: 3px; transition: width 0.4s; }
+    .prog-txt { font-size: 12px; color: var(--text3); min-width: 36px; text-align: right; }
+    .next-btn { width: 100%; padding: 14px; background: var(--text); color: var(--bg); border: none; border-radius: var(--radius); font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 10px; display: none; -webkit-tap-highlight-color: transparent; }
+    .next-btn:active { opacity: 0.85; }
+    .no-snooze { text-align: center; font-size: 12px; color: var(--text3); margin-top: 8px; }
+
+    /* Done screen */
+    .done-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; text-align: center; }
+    .done-icon { width: 76px; height: 76px; border-radius: 50%; background: var(--success-bg); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; font-size: 36px; }
+    .done-title { font-size: 24px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .done-sub { font-size: 15px; color: var(--text2); margin-bottom: 1.5rem; }
+    .score-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; width: 100%; margin-bottom: 2rem; }
+    .score-card { background: var(--bg2); border-radius: var(--radius-sm); padding: 12px 8px; }
+    .score-num { font-size: 26px; font-weight: 700; color: var(--text); }
+    .score-lbl { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- SETUP -->
+<div class="screen active" id="setup-screen">
+  <h1>Wake Up Enforcer</h1>
+  <p class="sub">Random trivia to wake your brain. No escape until you answer correctly.</p>
+
+  <p class="lbl">Wake time</p>
+  <div class="time-row">
+    <div class="spin-col">
+      <button class="spin-btn" onclick="adjH(1)">▲</button>
+      <div class="time-box" id="disp-h">06</div>
+      <button class="spin-btn" onclick="adjH(-1)">▼</button>
+    </div>
+    <div class="sep">:</div>
+    <div class="spin-col">
+      <button class="spin-btn" onclick="adjM(1)">▲</button>
+      <div class="time-box" id="disp-m">00</div>
+      <button class="spin-btn" onclick="adjM(-1)">▼</button>
+    </div>
+    <div class="ampm-col">
+      <button class="ampm-btn active" id="btn-am" onclick="setAP('AM')">AM</button>
+      <button class="ampm-btn" id="btn-pm" onclick="setAP('PM')">PM</button>
+    </div>
+  </div>
+
+  <p class="lbl">Correct answers needed</p>
+  <div class="count-row">
+    <button class="cnt-btn" onclick="adjQ(-1)">−</button>
+    <div class="cnt-num" id="q-count">3</div>
+    <button class="cnt-btn" onclick="adjQ(1)">+</button>
+    <span class="cnt-desc">to dismiss the alarm</span>
+  </div>
+
+  <p class="lbl">Categories</p>
+  <div class="cat-grid" id="cat-grid"></div>
+
+  <button class="primary-btn" onclick="setAlarm()">Set Alarm</button>
+</div>
+
+<!-- WAITING -->
+<div class="screen" id="wait-screen">
+  <div class="status-pill"><div class="dot"></div><span>Alarm active — keep this app open</span></div>
+  <div class="wait-card">
+    <div class="wait-time" id="wait-time-disp">6:00 AM</div>
+    <div class="wait-lbl">alarm set for</div>
+    <div class="cd-row">
+      <div class="cd-card"><div class="cd-num" id="cd-h">--</div><div class="cd-unit">hours</div></div>
+      <div class="cd-card"><div class="cd-num" id="cd-m">--</div><div class="cd-unit">minutes</div></div>
+      <div class="cd-card"><div class="cd-num" id="cd-s">--</div><div class="cd-unit">seconds</div></div>
+    </div>
+  </div>
+  <p class="hint-txt">Keep your screen on and volume up.<br>The alarm fires in this app when the countdown hits zero.</p>
+  <button class="ghost-btn" onclick="cancelAlarm()">Cancel alarm</button>
+</div>
+
+<!-- ALARM -->
+<div class="screen" id="alarm-screen">
+  <div class="alarm-top">
+    <div class="ring-lbl">Wake up!</div>
+    <div class="ring-time" id="ring-time-disp">6:00</div>
+  </div>
+  <div class="q-card">
+    <div class="q-cat-row">
+      <div class="q-cat-dot" id="q-cat-dot"></div>
+      <div class="q-cat-lbl" id="q-cat-lbl">Math</div>
+    </div>
+    <div class="q-text" id="q-text">Loading...</div>
+    <div class="opts" id="opts"></div>
+    <div class="explain" id="explain"></div>
+    <div class="prog-row">
+      <div class="prog-bg"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+      <div class="prog-txt" id="prog-txt">0 / 3</div>
+    </div>
+  </div>
+  <button class="next-btn" id="next-btn" onclick="nextQ()">Next question</button>
+  <p class="no-snooze">No snooze. Answer all questions to stop the alarm.</p>
+</div>
+
+<!-- DONE -->
+<div class="screen" id="done-screen">
+  <div class="done-wrap">
+    <div class="done-icon">✓</div>
+    <div class="done-title">You're up!</div>
+    <div class="done-sub">Good work. Go drink some water.</div>
+    <div class="score-grid">
+      <div class="score-card"><div class="score-num" id="sc-c">0</div><div class="score-lbl">correct</div></div>
+      <div class="score-card"><div class="score-num" id="sc-w">0</div><div class="score-lbl">wrong</div></div>
+      <div class="score-card"><div class="score-num" id="sc-p">—</div><div class="score-lbl">accuracy</div></div>
+    </div>
+    <button class="primary-btn" onclick="resetApp()">Set another alarm</button>
+  </div>
+</div>
+
+<script>
+const CATS=[
+  {id:'math',    label:'Math',        color:'#185FA5'},
+  {id:'physics', label:'Physics',     color:'#534AB7'},
+  {id:'space',   label:'Space',       color:'#0F6E56'},
+  {id:'jets',    label:'Jet Engines', color:'#993C1D'},
+  {id:'aero',    label:'Aerospace',   color:'#854F0B'},
+];
+const QS=[
+  {c:'math',q:'What is the derivative of x² + 3x?',o:['2x + 3','x² + 3','2x','x + 3'],a:0,w:'Power rule: d/dx of x² is 2x, d/dx of 3x is 3. So 2x + 3.'},
+  {c:'math',q:'What is log₂(64)?',o:['8','6','4','32'],a:1,w:'2⁶ = 64, so log₂(64) = 6.'},
+  {c:'math',q:'What is the integral of sin(x)?',o:['cos(x)','−cos(x)','sin(x)','−sin(x)'],a:1,w:'The antiderivative of sin(x) is −cos(x) + C.'},
+  {c:'math',q:'How many radians are in 180°?',o:['π/2','2π','π','3π/2'],a:2,w:'180° = π radians. A full circle (360°) = 2π radians.'},
+  {c:'math',q:'What is 17 × 13?',o:['201','221','231','211'],a:1,w:'17 × 10 + 17 × 3 = 170 + 51 = 221.'},
+  {c:'math',q:"What is e to 2 decimal places?",o:['2.71','3.14','1.61','2.81'],a:0,w:"Euler's number e ≈ 2.71828..."},
+  {c:'math',q:'Right triangle legs 5 and 12. Hypotenuse?',o:['15','13','17','11'],a:1,w:'√(25 + 144) = √169 = 13. Classic 5-12-13 Pythagorean triple.'},
+  {c:'math',q:'What is 2¹⁰?',o:['512','1024','2048','256'],a:1,w:'2¹⁰ = 1024. Memorize this — it shows up constantly in engineering.'},
+  {c:'math',q:'What is sin(90°)?',o:['0','0.5','1','−1'],a:2,w:'At 90° the unit circle y-coordinate is 1, so sin(90°) = 1.'},
+  {c:'math',q:'Quadratic formula for ax²+bx+c=0?',o:['(b±√(b²−4ac))/2a','−b/2a','(−b±√(b²−4ac))/2a','(−b±√(b²+4ac))/2a'],a:2,w:'x = (−b ± √(b²−4ac)) / 2a. The ± gives two roots.'},
+  {c:'physics',q:'F=ma. F=50 N, a=10 m/s². What is m?',o:['500 kg','5 kg','0.2 kg','40 kg'],a:1,w:'m = F/a = 50/10 = 5 kg.'},
+  {c:'physics',q:"What is Newton's 3rd law?",o:['F=ma','Objects at rest stay at rest','Every action has an equal and opposite reaction','Energy is conserved'],a:2,w:"Newton's 3rd: every action force has an equal and opposite reaction force. This is how rockets work."},
+  {c:'physics',q:"What does Bernoulli's principle relate?",o:['Mass and velocity','Pressure and fluid speed','Temperature and volume','Force and area'],a:1,w:"Faster-moving fluid has lower pressure. This explains lift — faster air over a wing = lower pressure above it."},
+  {c:'physics',q:'Unit of pressure?',o:['Newton','Joule','Pascal','Watt'],a:2,w:'Pressure is in Pascals (Pa) = one Newton per square meter (N/m²).'},
+  {c:'physics',q:'Mach 1 at sea level is approximately?',o:['340 m/s','500 m/s','200 m/s','700 m/s'],a:0,w:'Speed of sound at sea level ≈ 343 m/s. Lower at altitude — ~295 m/s at 35,000 ft.'},
+  {c:'physics',q:'Speed of light in a vacuum?',o:['3×10⁸ m/s','3×10⁶ m/s','1.5×10⁸ m/s','9×10⁸ m/s'],a:0,w:'c = 299,792,458 m/s, rounded to 3×10⁸ m/s.'},
+  {c:'physics',q:'Which is conserved in an inelastic collision?',o:['Kinetic energy','Momentum','Both','Neither'],a:1,w:'Momentum is always conserved. Kinetic energy is only conserved in perfectly elastic collisions.'},
+  {c:'physics',q:'What causes lift on an aircraft wing?',o:['Weight','Thrust','Pressure differential','Friction'],a:2,w:'Lift = pressure difference — lower pressure above the wing than below, due to wing shape and angle of attack.'},
+  {c:'physics',q:'1st law of thermodynamics?',o:['Energy cannot be created or destroyed','Entropy always increases','Heat flows cold to hot','PV = nRT'],a:0,w:'Conservation of energy: energy changes form but total is always conserved.'},
+  {c:'physics',q:'Dynamic pressure q equals?',o:['ρv','½ρv²','ρv²','½ρ/v'],a:1,w:'q = ½ρv², where ρ is air density and v is velocity. Appears in all aerodynamic force equations.'},
+  {c:'space',q:'Closest star to Earth besides the Sun?',o:['Sirius','Proxima Centauri','Betelgeuse','Vega'],a:1,w:'Proxima Centauri is ~4.24 light-years away, part of the Alpha Centauri triple-star system.'},
+  {c:'space',q:'How long for sunlight to reach Earth?',o:['1 second','8 minutes','1 hour','8 hours'],a:1,w:'~150 million km at 3×10⁸ m/s = about 8 minutes 20 seconds.'},
+  {c:'space',q:'Low Earth orbit velocity?',o:['4 km/s','7.8 km/s','11.2 km/s','2 km/s'],a:1,w:'LEO requires ~7.8 km/s (~28,000 km/h). Escape velocity is higher at ~11.2 km/s.'},
+  {c:'space',q:"Earth's escape velocity?",o:['7.9 km/s','11.2 km/s','3 km/s','25 km/s'],a:1,w:"Earth's escape velocity ≈ 11.2 km/s — minimum speed to escape gravity without further propulsion."},
+  {c:'space',q:'Which planet has the Great Red Spot?',o:['Saturn','Neptune','Mars','Jupiter'],a:3,w:"Jupiter's Great Red Spot is a persistent anticyclonic storm observed for 350+ years."},
+  {c:'space',q:'Schwarzschild radius is related to?',o:['Neutron stars','Black holes','Pulsars','White dwarfs'],a:1,w:"The Schwarzschild radius defines a black hole's event horizon — the point of no return."},
+  {c:'space',q:'What forces must a rocket overcome to reach orbit?',o:['Drag only','Gravity only','Gravity and drag','Magnetism'],a:2,w:'Rockets overcome gravity (dominant) and aerodynamic drag through the atmosphere.'},
+  {c:'space',q:'What causes seasons on Earth?',o:['Distance from Sun','Axial tilt','Solar flares',"Moon's gravity"],a:1,w:"Seasons are caused by Earth's 23.5° axial tilt, not distance. Earth is actually closest to the Sun in January."},
+  {c:'space',q:'What is a light-year?',o:['Time for light to reach the Moon','Distance light travels in one year','Speed of light per year','One billion km'],a:1,w:'A light-year is a distance: ~9.46 × 10¹² km.'},
+  {c:'jets',q:'Four stages of a turbojet in order?',o:['Intake, compress, combust, exhaust','Combust, compress, intake, exhaust','Compress, intake, combust, exhaust','Intake, combust, compress, exhaust'],a:0,w:'Intake → Compression → Combustion → Exhaust. Every jet engine follows this thermodynamic cycle.'},
+  {c:'jets',q:'Higher bypass ratio gives a turbofan?',o:['More thrust, less efficient','Less thrust, more noise','Better fuel efficiency, less noise','Faster top speed'],a:2,w:'High bypass: more air at lower velocity — far more fuel efficient and quieter. Trade-off is lower top speed.'},
+  {c:'jets',q:'Function of the turbine in a jet engine?',o:['Compress incoming air','Extract energy from hot gases to drive the compressor','Mix fuel with air','Cool exhaust gases'],a:1,w:'The turbine extracts energy from combustion gases to spin the shaft, driving the compressor.'},
+  {c:'jets',q:'What does specific impulse (Isp) measure?',o:['Thrust per unit weight of fuel per second','Engine temperature','Compression ratio','Total fuel capacity'],a:0,w:'Isp = thrust per unit weight of propellant per second — the efficiency metric for propulsion. Higher = better.'},
+  {c:'jets',q:'A ramjet requires what to function?',o:['An electric motor','Pre-existing high-speed airflow','An onboard rotating compressor','Liquid oxygen'],a:1,w:"Ramjets have no moving parts — they ram air in at speed to compress it. They can't start from rest."},
+  {c:'jets',q:'What compresses air before the combustion chamber?',o:['Turbine','Nozzle','Compressor','Afterburner'],a:2,w:'The compressor raises air pressure before combustion. Higher compression = more efficient combustion.'},
+  {c:'jets',q:'Thrust is produced by which principle?',o:['Bernoulli only',"Newton's 3rd law","Hooke's law","Ohm's law"],a:1,w:"Newton's 3rd: engine ejects mass backward, equal/opposite reaction pushes aircraft forward."},
+  {c:'jets',q:'What does an afterburner do?',o:['Cools exhaust','Injects extra fuel into exhaust for more thrust','Compresses inlet air','Increases bypass ratio'],a:1,w:'Afterburners inject raw fuel into the hot exhaust stream for massive but fuel-hungry thrust boost.'},
+  {c:'jets',q:'Modern turbofan compressor pressure ratio?',o:['2:1','5:1','~45:1','100:1'],a:2,w:'Modern high-bypass turbofans achieve ~40:1 to 50:1. Higher ratio = more efficient thermodynamic cycle.'},
+  {c:'aero',q:'What does Mach number represent?',o:['Speed relative to sea level','Speed relative to speed of sound','Altitude in feet','Engine thrust in pounds'],a:1,w:'Mach number = aircraft speed ÷ local speed of sound. Mach 2 = twice the speed of sound.'},
+  {c:'aero',q:'Which division built the SR-71 Blackbird?',o:['Boeing Phantom Works','Northrop Advanced Systems','Skunk Works','DARPA'],a:2,w:"Lockheed's Skunk Works (ADP) built the U-2, SR-71, F-117, and F-22 among others."},
+  {c:'aero',q:'Converging-diverging nozzle purpose?',o:['Subsonic flow only','Achieving supersonic exhaust velocity','Reducing engine temperature','Increasing bypass ratio'],a:1,w:'De Laval nozzle: flow goes sonic at the throat, then continues supersonic in the diverging section.'},
+  {c:'aero',q:'What does TSFC stand for?',o:['Total Static Force Component','Thrust-Specific Fuel Consumption','Turbine Stage Flow Control','Terminal Sonic Flight Ceiling'],a:1,w:'Thrust-Specific Fuel Consumption: fuel burned per unit of thrust per unit of time. Lower = more efficient.'},
+  {c:'aero',q:'Tsiolkovsky rocket equation: Δv depends on?',o:['Thrust only','Exhaust velocity and mass ratio','Fuel tank size only','Engine temperature'],a:1,w:'Δv = v_e × ln(m₀/m_f). Delta-v is set by exhaust velocity and initial-to-final mass ratio.'},
+  {c:'aero',q:'Reynolds number characterizes what?',o:['Engine efficiency','Flow regime: laminar vs turbulent','Aircraft weight','Fuel burn rate'],a:1,w:'Re = ρvL/μ — predicts whether flow is laminar or turbulent. Critical for airfoil design and drag.'},
+];
+
+let alarmH=6,alarmM=0,ap='AM',qCount=3;
+let activeCats=new Set(['math','physics','space','jets','aero']);
+let cdInterval=null,alarmNode=null,audioCtx=null;
+let queue=[],qIdx=0,solved=0,wrong=0;
+
+function pad(n){return String(n).padStart(2,'0');}
+function updDisp(){document.getElementById('disp-h').textContent=pad(alarmH);document.getElementById('disp-m').textContent=pad(alarmM);}
+function adjH(d){alarmH=(alarmH+d-1+12)%12+1;updDisp();}
+function adjM(d){alarmM=(alarmM+d*5+60)%60;updDisp();}
+function setAP(v){ap=v;document.getElementById('btn-am').classList.toggle('active',v==='AM');document.getElementById('btn-pm').classList.toggle('active',v==='PM');}
+function adjQ(d){qCount=Math.max(1,Math.min(8,qCount+d));document.getElementById('q-count').textContent=qCount;}
+
+function buildCats(){
+  const g=document.getElementById('cat-grid');
+  CATS.forEach(c=>{
+    const b=document.createElement('button');
+    b.className='cat-btn on';
+    b.style.borderColor=c.color;b.style.color=c.color;
+    b.innerHTML=`<div style="width:6px;height:6px;border-radius:50%;background:${c.color};margin:0 auto 4px;"></div>${c.label}`;
+    b.onclick=()=>{
+      if(activeCats.has(c.id)){
+        if(activeCats.size<=1)return;
+        activeCats.delete(c.id);b.classList.remove('on');
+        b.style.borderColor='';b.style.color='';
+        b.querySelector('div').style.background='var(--border2)';
+      } else {
+        activeCats.add(c.id);b.classList.add('on');
+        b.style.borderColor=c.color;b.style.color=c.color;
+        b.querySelector('div').style.background=c.color;
+      }
+    };
+    g.appendChild(b);
+  });
+}
+
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+
+function getAlarmDate(){
+  let h=alarmH%12;if(ap==='PM')h+=12;
+  const d=new Date();d.setHours(h,alarmM,0,0);
+  if(d<=new Date())d.setDate(d.getDate()+1);
+  return d;
+}
+
+function setAlarm(){
+  const alarm=getAlarmDate();
+  document.getElementById('wait-time-disp').textContent=`${alarmH}:${pad(alarmM)} ${ap}`;
+  document.getElementById('ring-time-disp').textContent=`${alarmH}:${pad(alarmM)}`;
+  showScreen('wait-screen');
+  cdInterval=setInterval(()=>{
+    let diff=Math.max(0,alarm-new Date());
+    const h=Math.floor(diff/3600000);diff-=h*3600000;
+    const m=Math.floor(diff/60000);diff-=m*60000;
+    const s=Math.floor(diff/1000);
+    document.getElementById('cd-h').textContent=h;
+    document.getElementById('cd-m').textContent=m;
+    document.getElementById('cd-s').textContent=s;
+    if(h===0&&m===0&&s===0){clearInterval(cdInterval);triggerAlarm();}
+  },500);
+}
+
+function cancelAlarm(){clearInterval(cdInterval);showScreen('setup-screen');}
+
+function shuffle(a){const r=[...a];for(let i=r.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[r[i],r[j]]=[r[j],r[i]];}return r;}
+
+function triggerAlarm(){
+  solved=0;wrong=0;
+  const pool=QS.filter(q=>activeCats.has(q.c));
+  queue=shuffle(pool);
+  if(queue.length<qCount)queue=[...queue,...shuffle(pool)];
+  qIdx=0;
+  showScreen('alarm-screen');
+  document.getElementById('alarm-screen').classList.add('alarm-flash');
+  startSound();loadQ();
+}
+
+function loadQ(){
+  const q=queue[qIdx%queue.length];
+  const meta=CATS.find(c=>c.id===q.c)||{label:q.c,color:'#888'};
+  document.getElementById('q-cat-dot').style.background=meta.color;
+  document.getElementById('q-cat-lbl').textContent=meta.label;
+  document.getElementById('q-text').textContent=q.q;
+  const opts=document.getElementById('opts');opts.innerHTML='';
+  q.o.forEach((opt,i)=>{
+    const b=document.createElement('button');b.className='opt';b.textContent=opt;
+    b.onclick=()=>answer(i,q,b);opts.appendChild(b);
+  });
+  const ex=document.getElementById('explain');ex.className='explain';ex.textContent='';
+  document.getElementById('next-btn').style.display='none';
+  updProg();
+}
+
+function answer(chosen,q,btn){
+  document.querySelectorAll('.opt').forEach(b=>b.disabled=true);
+  const allBtns=document.querySelectorAll('.opt');
+  allBtns[q.a].classList.add('correct');
+  const ex=document.getElementById('explain');
+  if(chosen===q.a){
+    solved++;updProg();
+    ex.textContent='Correct! '+q.w;
+    ex.className='explain show good';
+    if(solved>=qCount){setTimeout(stopAlarm,900);}
+    else{document.getElementById('next-btn').style.display='block';}
+  } else {
+    btn.classList.add('wrong');
+    wrong++;updProg();
+    ex.textContent='Wrong — correct answer is "'+q.o[q.a]+'". '+q.w;
+    ex.className='explain show bad';
+    document.getElementById('next-btn').style.display='block';
+  }
+}
+
+function nextQ(){qIdx++;loadQ();}
+
+function updProg(){
+  const pct=Math.round((solved/qCount)*100);
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-txt').textContent=solved+' / '+qCount;
+}
+
+function startSound(){
+  try{
+    audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    function beep(){
+      if(!audioCtx)return;
+      const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+      o.connect(g);g.connect(audioCtx.destination);
+      o.frequency.setValueAtTime(900,audioCtx.currentTime);
+      o.frequency.setValueAtTime(680,audioCtx.currentTime+0.15);
+      g.gain.setValueAtTime(0.4,audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.38);
+      o.start(audioCtx.currentTime);o.stop(audioCtx.currentTime+0.38);
+    }
+    beep();alarmNode=setInterval(beep,680);
+  }catch(e){}
+}
+
+function stopAlarm(){
+  if(alarmNode){clearInterval(alarmNode);alarmNode=null;}
+  if(audioCtx){audioCtx.close();audioCtx=null;}
+  document.getElementById('alarm-screen').classList.remove('alarm-flash');
+  const total=solved+wrong;
+  const pct=total>0?Math.round((solved/total)*100):100;
+  document.getElementById('sc-c').textContent=solved;
+  document.getElementById('sc-w').textContent=wrong;
+  document.getElementById('sc-p').textContent=pct+'%';
+  showScreen('done-screen');
+}
+
+function resetApp(){showScreen('setup-screen');}
+
+buildCats();updDisp();
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
